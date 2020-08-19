@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paleta de colores</title>
+</head>
+
+<body>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="./color.js"></script>
+    <div id="app">
+        <div class="container">
+            <div class="row">
+                <div class="col s12 m12">
+                    <h1 class="center-align">Color picker</h1>
+                    <div class="card-panel">
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <div class="card-panel" v-bind:style="{height: '500px', backgroundColor: color}">
+
+                                </div>
+                            </div>
+                            <div class="col s12 m6">
+                                <div class="card-panel" style="height: 500px;">
+                                    <label for="color">Color (H)</label>
+                                    <input type="range" name="color" v-model="hue" min="0" max="360">
+                                    <label for="saturacion">Saturación (S)</label>
+                                    <input type="range" name="saturacion" v-model="sat" min="0" max="100">
+                                    <label for="intensidad">intensidad (L)</label>
+                                    <input type="range" name="intensidad" v-model="lig" min="0" max="100">
+                                    <p class="center-align">
+                                        <span>Hue {{hue}}, Sat {{sat}}%, Lig {{lig}}%</span>
+                                    </p>
+
+                                    <div class="row center-align">
+                                        <div v-for="item in 6" class="col m2">
+                                            <div class="card-panel"
+                                                v-bind:style="{height: '10px', backgroundColor: getHlsaColor(hue, sat, 100-item*10)}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
