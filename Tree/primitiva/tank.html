@@ -103,7 +103,6 @@
             //Suelo donde se desplazará el objeto
             const groundGeometry = new THREE.PlaneBufferGeometry(200, 200);
             const groundMaterial = new THREE.MeshPhongMaterial({
-                color: 0xCC8866,
                 map: loader.load('./img/ground.jpg'),
             });
             const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -125,7 +124,7 @@
 
             //Cuerpo del tanque
             const bodyGeometry = new THREE.BoxBufferGeometry(carWidth, carHeight, carLength);
-            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x6688AA });
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x6688AA, map: loader.load('./img/tank.jpg') });
             const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
             bodyMesh.position.y = 1.4;
             bodyMesh.castShadow = true;
@@ -149,7 +148,9 @@
                 wheelRadius,     // bottom radius
                 wheelThickness,  // height of cylinder
                 wheelSegments);
-            const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+            const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x888888,
+                map: loader.load('./img/wheeltank.jpg')
+            });
             const wheelPositions = [
                 [-carWidth / 2 - wheelThickness / 2, -carHeight / 2, carLength / 3],
                 [carWidth / 2 + wheelThickness / 2, -carHeight / 2, carLength / 3],
@@ -178,7 +179,10 @@
             const domeGeometry = new THREE.SphereBufferGeometry(
                 domeRadius, domeWidthSubdivisions, domeHeightSubdivisions,
                 domePhiStart, domePhiEnd, domeThetaStart, domeThetaEnd);
-            const domeMesh = new THREE.Mesh(domeGeometry, bodyMaterial);
+            const domeMaterial = new THREE.MeshPhongMaterial({
+                map: loader.load('./img/dometank.jpg'),
+            });
+            const domeMesh = new THREE.Mesh(domeGeometry, domeMaterial);
             domeMesh.castShadow = true;
             bodyMesh.add(domeMesh);
             domeMesh.position.y = .5;
@@ -190,7 +194,7 @@
             const frontDomeGeometry = new THREE.BoxBufferGeometry(
                 frontDomeWidth, frontDomeHeight, frontDomeLength);
 
-            const frontDomeMesh = new THREE.Mesh(frontDomeGeometry, bodyMaterial);
+            const frontDomeMesh = new THREE.Mesh(frontDomeGeometry, domeMaterial);
             frontDomeMesh.position.y = frontDomeHeight * 1;
             frontDomeMesh.position.z = frontDomeLength * 1.8;
             bodyMesh.add(frontDomeMesh);
@@ -201,7 +205,7 @@
             const turretLength = carLength * .75 * .2;
             const turretGeometry = new THREE.BoxBufferGeometry(
                 turretWidth, turretHeight, turretLength);
-            const turretMesh = new THREE.Mesh(turretGeometry, bodyMaterial);
+            const turretMesh = new THREE.Mesh(turretGeometry, domeMaterial);
             const turretPivot = new THREE.Object3D();
             turretMesh.castShadow = true;
             turretPivot.scale.set(5, 5, 5);
