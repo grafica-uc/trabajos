@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+        }
+
+        #c {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <script type="module">
+        import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.108.0/examples/jsm/controls/OrbitControls.js';
+
+
+        function main() {
+            let useSetPixelRatio = false,
+                usePixelRatio = true
+            const canvas = document.querySelector('#c');
+            const renderer = new THREE.WebGLRenderer({ canvas });
+            if (useSetPixelRatio)//usara el multiplicador de resolucion (mayor consumo de GPU) no recomendado
+                renderer.setPixelRatio(window.devicePixelRatio);
+            const fov = 150;
+            const aspect = 2;  // the canvas default
+            const near = 0.1;
+            const far = 1000;
+            const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            camera.position.z = 2;
+            // camera.position.y = 1;
+
+            const scene = new THREE.Scene();
+
+            const boxWidth = 1;
+            const boxHeight = 1;
+            const boxDepth = 1;
+            const boxGeometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+
+            let radius = 1;
+            const height = 2;
+            let radialSegments = 30;
+            const coneGeometry = new THREE.ConeGeometry(radius, height, radialSegments)
+
+            radius = .5;
+            const tubeRadius = .3;
+            radialSegments = 20;
+            const tubularSegments = 34;
+            const p = 2;
+            const q = 3;
+            const toruGeometry = new THREE.TorusKnotBufferGeometry(
+                radius, tubeRadius, tubularSegments, radialSegments, p, q);
+
+
+            const cubes = [
+                makeInstance(boxGeometry, 0x44aa88, 0, 1.5, .2),
+                makeInstance(coneGeometry, 0x8844aa, -2, 0, -3),
+                makeInstance(toruGeometry, 0xaa8844, 2, -1, 0),
+            ];
+
+            const color = 0xFFFFFF;
+            const intensity = 1;
+            const light = new THREE.DirectionalLight(color, intensity);
+            light.position.set(-1, 2, 4);
+            scene.add(light);
+
+            renderer.render(scene, camera);
+
+            //Genera una instacion de material independiente para la geometria
+            function makeInstance(geometry, color, x, y, z) {
+                const material = new THREE.MeshPhongMaterial({ color });
+
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+
+                cube.position.x = x;
+                cube.position.y = y;
+                cube.position.z = z;
+
+                return cube;
+            }
+
+            function render(time) {
+                time *= 0.001;  // convierte el tiempo en segundos
+
+
+                if (resizeRendererToDisplaySize(renderer)) {
+                    //Reestablece el tamaño de la camara con respecto al tamaño del lienzo
+                    const canvas = renderer.domElement;
+                    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    camera.updateProjectionMatrix();
+                }
+
+
+                cubes.forEach((cube, ndx) => {
+                    const speed = 1 + ndx * .1;
+                    const rot = time * speed;
+                    cube.rotation.x = rot;
+                    cube.rotation.y = rot;
+                });
+
+
+                renderer.render(scene, camera);
+
+                requestAnimationFrame(render);
+            }
+
+            //Reestablece el tamaño del bufer de dibujo con respecto al tamaño del lienzo
+            function resizeRendererToDisplaySize(renderer) {
+                const canvas = renderer.domElement;
+                const pixelRatio = window.devicePixelRatio;
+                const width = usePixelRatio ?
+                    canvas.clientWidth * pixelRatio | 0 :
+                    canvas.clientWidth;
+                const height = usePixelRatio ?
+                    canvas.clientHeight * pixelRatio | 0 :
+                    canvas.clientHeight;
+                const needResize = canvas.width !== width || canvas.height !== height;
+                if (needResize) {
+                    renderer.setSize(width, height, false);
+                }
+                return needResize;
+            }
+
+
+            requestAnimationFrame(render);
+        }
+
+
+
+
+        main();
+
+    </script>
+</body>
+
+</html>

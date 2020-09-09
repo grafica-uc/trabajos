@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+        }
+
+        #c {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+    <link rel="stylesheet" href="./js/dat.gui.css">
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <script type="text/javascript" src="./js/dat.gui.js"></script>
+    <script type="module">
+        import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.108.0/examples/jsm/controls/OrbitControls.js';
+        
+        var GUI = dat.gui.GUI;
+        var gui = new GUI();
+
+        function main() {
+            let useSetPixelRatio = false,
+                usePixelRatio = true
+            const canvas = document.querySelector('#c');
+            const renderer = new THREE.WebGLRenderer({ canvas });
+            if (useSetPixelRatio)//usara el multiplicador de resolucion (mayor consumo de GPU) no recomendado
+                renderer.setPixelRatio(window.devicePixelRatio);
+            const fov = 40;
+            const aspect = 2;  // the canvas default
+            const near = 0.1;
+            const far = 1000;
+            const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            camera.position.set(0, 50, 0);
+            camera.up.set(0, 0, 1);
+            camera.lookAt(0, 0, 0);
+
+
+            const scene = new THREE.Scene();
+
+            const objects = [];
+
+            const solarSystem = new THREE.Object3D();
+            scene.add(solarSystem);
+            objects.push(solarSystem);
+
+            const radius = 1;
+            const widthSegments = 6;
+            const heightSegments = 6;
+            const sphereGeometry = new THREE.SphereBufferGeometry(
+                radius, widthSegments, heightSegments);
+
+            const sunMaterial = new THREE.MeshPhongMaterial({ emissive: 0xFFFF00 });
+            const sunMesh = new THREE.Mesh(sphereGeometry, sunMaterial);
+            sunMesh.scale.set(5, 5, 5);  // agranda el sol
+            solarSystem.add(sunMesh);
+            objects.push(sunMesh);
+
+
+            const earthOrbit = new THREE.Object3D();
+            earthOrbit.position.x = 10;
+            solarSystem.add(earthOrbit);
+            objects.push(earthOrbit);
+
+            const earthMaterial = new THREE.MeshPhongMaterial({ color: 0x2233FF, emissive: 0x112244 });
+            const earthMesh = new THREE.Mesh(sphereGeometry, earthMaterial);
+            earthOrbit.add(earthMesh);
+            objects.push(earthMesh);
+
+            const moonOrbit = new THREE.Object3D();
+            moonOrbit.position.x = 2;
+            earthOrbit.add(moonOrbit);
+
+            const moonMaterial = new THREE.MeshPhongMaterial({ color: 0x888888, emissive: 0x222222 });
+            const moonMesh = new THREE.Mesh(sphereGeometry, moonMaterial);
+            moonMesh.scale.set(.5, .5, .5);
+            moonOrbit.add(moonMesh);
+            objects.push(moonMesh);
+
+
+
+            const color = 0xFFFFFF;
+            const intensity = 3;
+            const light = new THREE.PointLight(color, intensity);
+            scene.add(light);
+
+
+            renderer.render(scene, camera);
+
+            // Activa / desactiva ambos ejes y cuadrícula
+            // dat.GUI requiere una propiedad que devuelva un bool
+            // para decidir hacer una casilla de verificación para hacer un setter
+            // y getter para `visible` que podemos decir dat.GUI
+            // para mirar.
+            class AxisGridHelper {
+                constructor(node, units = 10) {
+                    const axes = new THREE.AxesHelper();
+                    axes.material.depthTest = false;
+                    axes.renderOrder = 2;  // después de la cuadrícula
+                    node.add(axes);
+
+                    const grid = new THREE.GridHelper(units, units);
+                    grid.material.depthTest = false;
+                    grid.renderOrder = 1;
+                    node.add(grid);
+
+                    this.grid = grid;
+                    this.axes = axes;
+                    this.visible = false;
+                }
+                get visible() {
+                    return this._visible;
+                }
+                set visible(v) {
+                    this._visible = v;
+                    this.grid.visible = v;
+                    this.axes.visible = v;
+                }
+            }
+            
+            //x (rojo) z (azul) y (verdes) 
+            function makeAxisGrid(node, label, units) {
+                const helper = new AxisGridHelper(node, units);
+                gui.add(helper, 'visible').name(label);
+            }
+
+            makeAxisGrid(solarSystem, 'solarSystem', 25);
+            makeAxisGrid(sunMesh, 'sunMesh');
+            makeAxisGrid(earthOrbit, 'earthOrbit');
+            makeAxisGrid(earthMesh, 'earthMesh');
+            makeAxisGrid(moonMesh, 'moonMesh');
+
+
+
+            function render(time) {
+                time *= 0.001;  // convierte el tiempo en segundos
+
+
+                if (resizeRendererToDisplaySize(renderer)) {
+                    //Reestablece el tamaño de la camara con respecto al tamaño del lienzo
+                    const canvas = renderer.domElement;
+                    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    camera.updateProjectionMatrix();
+                }
+
+                objects.forEach((obj) => {
+                    obj.rotation.y = time;
+                });
+
+
+                renderer.render(scene, camera);
+
+                requestAnimationFrame(render);
+            }
+
+            //Reestablece el tamaño del bufer de dibujo con respecto al tamaño del lienzo
+            function resizeRendererToDisplaySize(renderer) {
+                const canvas = renderer.domElement;
+                const pixelRatio = window.devicePixelRatio;
+                const width = usePixelRatio ?
+                    canvas.clientWidth * pixelRatio | 0 :
+                    canvas.clientWidth;
+                const height = usePixelRatio ?
+                    canvas.clientHeight * pixelRatio | 0 :
+                    canvas.clientHeight;
+                const needResize = canvas.width !== width || canvas.height !== height;
+                if (needResize) {
+                    renderer.setSize(width, height, false);
+                }
+                return needResize;
+            }
+
+
+            requestAnimationFrame(render);
+        }
+
+
+
+
+        main();
+
+    </script>
+</body>
+
+</html>
