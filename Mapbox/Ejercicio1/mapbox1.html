@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--Mapbox resources-->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.css' rel='stylesheet'>
+    </link>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.1.0/chroma.min.js"></script>
+    <title>Práctica 1 con mapbox</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #map {
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id='map'></div>
+    <script>
+        window.onload = (e => { init() })
+        const LCL_PATH = './data/lcl.geojson'
+        const SINV_PATH = '../data/siviales.geojson'
+        let map, LCL, SINV;
+        let hoverLayer = null;
+        const idLCL = 'LCL', idSINV = 'SINV'
+        const idLCLLayer = 'LCLLayer', idSINVLayer = 'SINVLayer', idChroplethLayer = 'idChoroplethLayer'
+        function init() {
+            loadData().then(r => load())
+        }
+        function loadData() {
+            return new Promise(r => {
+                read(LCL_PATH).then(res => {
+                    LCL = res
+                    read(SINV_PATH).then(res => {
+                        SINV = res
+                        return r()
+                    })
+                })
+            }, e => {
+                console.log(e);
+            })
+        }
+        function load() {
+            mapboxgl.accessToken = 'pk.eyJ1IjoianBhcnJhYjEiLCJhIjoiY2tndHp4dDBsMWVoNjJ5cjNmMXp4dGRmMSJ9.wcmSNwgB_S6B36-t2bmyLA';
+
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/dark-v10',
+                center: [-74.08, 4.609],
+                zoom: 12,
+                hash: true,
+                pitch: 60,
+                bearing: 90
+            });
+
+            map.on('load', function () {
+                addResource(idLCL, LCL, 'geojson', idLCLLayer)
+                drawChoroplethMap(idChroplethLayer, idLCL)
+                addChangeOpacity(idChroplethLayer, idLCL)
+            })
+        }
+
+        function addResource(id, data, sType, idLayer) {
+            map.addSource(id, { type: sType, data })
+            drawPolygons(idLayer, id)
+        }
+
+        function drawPolygons(id, idSource) {
+            map.addLayer({
+                id,
+                type: 'fill',
+                source: idSource,
+                layout: { visibility: 'none' },
+                paint: {
+                    'fill-color': '#004466',
+                    'fill-outline-color': 'white',
+                    'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.7, 0.5]
+                }
+            })
+        }
+
+        function drawChoroplethMap(idLayer, idSource) {
+            var dataChoropleth = []
+            var cntLocality = []
+            let chpColorsMap = ['match', ['get', 'COD_LCL']]
+            LCL.features.forEach(item => {
+                let COD_LCL = item.properties.COD_LCL
+                let inc = SINV.features.filter(f => f.properties.COD_LCL === COD_LCL)
+                dataChoropleth.push({ COD_LCL, SINV: inc.length })
+                cntLocality.push(inc.length)
+            });
+
+            let colorInterval = chroma.limits(cntLocality, 'q', 4)
+            console.log(colorInterval);
+            let colorScale = chroma.scale(['#393507', '#C9BC30']).mode('lch').colors(5)
+            console.log(colorScale);
+            dataChoropleth.forEach(item => {
+                let color = '#ffffff'
+                for (let i = 0; i < colorInterval.length; i++) {
+                    if (item.SINV <= colorInterval[i]) {
+                        color = colorScale[i];
+                        chpColorsMap.push(item.COD_LCL, color)
+                        break;
+                    }
+                }
+            })
+            chpColorsMap.push('rgba(0,0,0,0)')
+            map.addLayer({
+                id: idLayer,
+                type: 'fill',
+                source: idSource,
+                layout: { visibility: 'visible' },
+                paint: {
+                    'fill-color': chpColorsMap,
+                    'fill-outline-color': 'white',
+                    'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.7, 0.5]
+                }
+            })
+        }
+
+        function addChangeOpacity(idLayer, idSource) {
+            map.on('mousemove', idLayer, function (e) {
+                if (hoverLayer) {
+                    map.setFeatureState({ source: idSource, id: hoverLayer }, { hover: false })
+                }
+                hoverLayer = e.features[0].id
+                map.setFeatureState({ source: idSource, id: hoverLayer }, { hover: true })
+            })
+            map.on('mouseleave', idLayer, function (e) {
+                if (hoverLayer) {
+                    map.setFeatureState({ source: idSource, id: hoverLayer }, { hover: false })
+                }
+            })
+        }
+
+        function read(url) {
+            return new Promise(r => {
+                var data = null
+                xhr = new XMLHttpRequest();
+                xhr.overrideMimeType('application/json')
+                xhr.open('GET', url, true)
+                xhr.onload = function (c) {
+                    if (xhr.readyState == 4 && xhr.status == 200) {
+                        data = JSON.parse(xhr.responseText)
+                        return r(data)
+                    }
+                }
+                xhr.send()
+
+            }, e => { return e(xhr.status) })
+
+        }
+    </script>
+
+
+
+</body>
+
+</html>
