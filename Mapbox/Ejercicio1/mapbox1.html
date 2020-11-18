@@ -32,10 +32,16 @@
         const idLCL = 'LCL', idSINV = 'SINV'
         const idLCLLayer = 'LCLLayer',
             idSINVLayer = 'SINVLayer',
-            idHeatSINVLayer = 'SINVLayer',
+            idHeatSINVLayer = 'HeatSINVLayer',
             idChroplethLayer = 'idChoroplethLayer',
             idChroplethHeightLayer = 'idChroplethHeightLayer',
-            idNameLayer = 'idNameLayer'
+            idNameLayer = 'idNameLayer',
+            idHighLightLayer = 'idHighLightLayer'
+
+        var popup = new mapboxgl.Popup({
+            closeButton: false
+        });
+
         function init() {
             loadData().then(r => load())
         }
@@ -83,6 +89,8 @@
                 drawNames(idNameLayer, idLCL)
                 onChangePitch(idChroplethHeightLayer)
                 changeLayerVisibility()
+                drawHeatMapSINV(idHeatSINVLayer, idSINV)
+                drawHightlightedLayer(idHighLightLayer, idLCL)
             })
         }
 
@@ -166,12 +174,64 @@
                 source: idSource,
                 layout: { visibility: 'visible' },
                 paint: {
-                    'heatmap-radius': [],
-                    'heatmap-weight': [],
-                    'heatmap-color': []
+                    'heatmap-radius': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0,
+                        2,
+                        9,
+                        20
+                    ],
+                    'heatmap-weight': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'mag'],
+                        0,
+                        0,
+                        6,
+                        1
+                    ],
+
+                    'heatmap-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['heatmap-density'],
+                        0,
+                        'rgba(33,102,172,0)',
+                        0.2,
+                        'rgb(103,169,207)',
+                        0.4,
+                        'rgb(209,229,240)',
+                        0.6,
+                        'rgb(253,219,199)',
+                        0.8,
+                        'rgb(239,138,98)',
+                        1,
+                        'rgb(178,24,43)'
+                    ],
                 }
 
             })
+        }
+
+        function drawHightlightedLayer(idLayer, idSource) {
+            map.addLayer(
+                {
+                    'id': idLayer,
+                    'type': 'fill',
+                    'source': idSource,
+                    layout: { visibility: 'visible' },
+                    'paint': {
+                        'fill-outline-color': '#484896',
+                        'fill-color': '#6e599f',
+                        'fill-opacity': 1
+                    },
+                    'filter': ['in', 'SINV', '']
+                },
+                'settlement-label'
+            );
+
         }
 
         function setChoropletColors() {
@@ -205,16 +265,28 @@
 
             setColorLegend()
         }
-
+        class Interval {
+            constructor(min, max) {
+                this.min = min
+                this.max = max
+                this.interval = isNaN(max) ? [min] : [min, max]
+            }
+            intervalTx() {
+                return isNaN(this.max) ? `${this.min}+` : `${this.min}-${this.max}`
+            }
+        }
         function setColorLegend() {
             let lv = 0;
-            let interval = ''
+            let intervalTx = ''
             let color = null
+            let interval = new Interval()
             colorInterval.forEach((item, ix) => {
-                if (ix < colorInterval.length - 1)
-                    interval = `${item}-${colorInterval[ix + 1] - 0.01}`;
-                else
-                    interval = `482+`
+                if (ix < colorInterval.length - 1) {
+                    interval = new Interval(item, colorInterval[ix + 1] - 0.01);
+                }
+                else {
+                    interval = new Interval(482, NaN)
+                }
 
                 color = colorScale[ix];
 
@@ -229,9 +301,21 @@
             key.style.backgroundColor = color;
 
             var value = document.createElement('span');
-            value.innerHTML = interval;
+            value.innerHTML = interval.intervalTx();
             container.appendChild(key);
             container.appendChild(value);
+
+            var filter = ["all", [">=", 'SINV', interval.min], ["<=", 'SINV', isNaN(interval.max) ? interval.min + 1 : interval.max]];
+            key.addEventListener('click', function () {
+                map.setFilter(idHighLightLayer,
+                    filter
+                );
+
+                map.setPaintProperty(idHighLightLayer, 'fill-color', "#000000");
+            });
+            key.addEventListener('mouseleave', function () {
+                map.setFilter(idHighLightLayer, ['in', 'SINV', '']);
+            });
             return container
         }
 
@@ -243,11 +327,17 @@
                 hoverLayer = e.features[0]
                 let cSINV = dataChoropleth.filter(f => f.COD_LCL === hoverLayer.properties.COD_LCL)[0].SINV
                 map.setFeatureState({ source: idSource, id: hoverLayer.id }, { hover: true })
+                popup
+                    .setLngLat(e.lngLat)
+                    .setText(`${hoverLayer.properties.NOM_LCL} : ${cSINV}`)
+                    .addTo(map);
+
                 document.getElementById('pd').innerHTML =
                     `<h3><strong> ${hoverLayer.properties.NOM_LCL} : ${cSINV} </strong></h3>`
             })
             map.on('mouseleave', idLayer, function (e) {
                 if (hoverLayer) {
+                    popup.remove();
                     map.setFeatureState({ source: idSource, id: hoverLayer.id }, { hover: false })
                     document.getElementById('pd').innerHTML = '<p></p>';
                 }
