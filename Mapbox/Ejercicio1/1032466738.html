@@ -24,7 +24,7 @@
     <script>
         window.onload = (e => { init() })
         const LCL_PATH = './data/lcl.geojson'
-        const SINV_PATH = '../data/siviales.geojson'
+        const SINV_PATH = './data/siviales.geojson'
         let map, LCL, SINV;
         let hoverLayer = null;
         let colorInterval = [], chpColorsMap = null,
@@ -37,6 +37,10 @@
             idChroplethHeightLayer = 'idChroplethHeightLayer',
             idNameLayer = 'idNameLayer',
             idHighLightLayer = 'idHighLightLayer'
+
+        let geoDataInc;
+
+        const idSDataHeatMap = 'datosHeatMap';
 
         var popup = new mapboxgl.Popup({
             closeButton: false
@@ -89,7 +93,8 @@
                 drawNames(idNameLayer, idLCL)
                 onChangePitch(idChroplethHeightLayer)
                 changeLayerVisibility()
-                drawHeatMapSINV(idHeatSINVLayer, idSINV)
+                addResource(idSDataHeatMap, geoDataInc, 'geojson');
+                drawHeatMapSINV(idHeatSINVLayer, idSDataHeatMap)
                 drawHightlightedLayer(idHighLightLayer, idLCL)
             })
         }
@@ -167,52 +172,26 @@
             })
         }
 
-        function drawHeatMapSINV(id, idSource) {
+        function drawHeatMapSINV(idLayer, idSource) {
             map.addLayer({
-                id,
+                id: idLayer,
                 type: 'heatmap',
                 source: idSource,
-                layout: { visibility: 'visible' },
+                minzoom: 11,
+                layout: { 'visibility': 'visible' },
                 paint: {
-                    'heatmap-radius': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        0,
-                        2,
-                        9,
-                        20
-                    ],
-                    'heatmap-weight': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'mag'],
-                        0,
-                        0,
-                        6,
-                        1
-                    ],
-
-                    'heatmap-color': [
-                        'interpolate',
-                        ['linear'],
-                        ['heatmap-density'],
-                        0,
-                        'rgba(33,102,172,0)',
-                        0.2,
-                        'rgb(103,169,207)',
-                        0.4,
-                        'rgb(209,229,240)',
-                        0.6,
-                        'rgb(253,219,199)',
-                        0.8,
-                        'rgb(239,138,98)',
-                        1,
-                        'rgb(178,24,43)'
-                    ],
+                    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 80, 10, 120, 11, 200, 12, 300],
+                    'heatmap-weight': ['interpolate', ['linear'], ['get', 'SINV'], 0, 0, 50, 0.5, 150, 1, 230, 1.5, 480, 2],
+                    'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+                        0, 'rgba(51, 153, 255,0)',
+                        0.2, 'rgba(51, 153, 255, 0.7)',
+                        0.5, 'rgba(51, 204, 51, 0.7)',
+                        0.8, 'rgba(255, 204, 102, 0.7)',
+                        1, 'rgba(255, 0, 0, 0.7)'
+                    ]
                 }
+            });
 
-            })
         }
 
         function drawHightlightedLayer(idLayer, idSource) {
@@ -253,10 +232,27 @@
         function setColorInterval() {
             dataChoropleth = []
             var cntLocality = []
+            geoDataInc = { 'type': 'FeatureCollection', 'features': [] }
+
             LCL.features.forEach(item => {
+
+                let loc = item.properties.COD_LCL;
+                let inc = SINV.features.filter(function (item) {
+                    return item.properties.COD_LCL === loc;
+                });
+
+                let lat = item.properties.geo_point_2d[0];
+                let lon = item.properties.geo_point_2d[1];
+                let dic = { COD_LCL: loc, SINV: inc.length };
+                let dic2 = {
+                    'type': 'Feature', 'geometry': { 'type': 'Point', 'coordinates': [lon, lat] }, 'properties': { 'COD_LCL': loc, 'CNTSIV': inc.length }
+                }
+
+                geoDataInc.features.push(dic2);
+
                 let COD_LCL = item.properties.COD_LCL
-                //let inc = SINV.features.filter(f => f.properties.COD_LCL === COD_LCL)
-                dataChoropleth.push({ COD_LCL, SINV: item.properties.SINV })
+
+                dataChoropleth.push(dic)
                 cntLocality.push(item.properties.SINV)
             });
 
